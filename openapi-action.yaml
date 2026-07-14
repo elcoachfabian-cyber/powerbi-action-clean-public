@@ -1,0 +1,123 @@
+openapi: 3.1.0
+info:
+  title: Power BI Automation Pilot API
+  version: 1.0.0
+  description: >
+    Genera un paquete técnico ZIP para Power BI a partir de un Excel final
+    y una especificación aprobada, sin modificar el archivo fuente.
+servers:
+  - url: https://REEMPLAZAR-POR-TU-SERVICIO.onrender.com
+
+paths:
+  /v1/build-package:
+    post:
+      operationId: buildPowerBIPackage
+      summary: Generar paquete técnico Power BI
+      description: >
+        Recibe exactamente un Excel .xlsx cargado en la conversación.
+        Requiere que las etapas 1 a 7 estén aprobadas y devuelve un ZIP descargable.
+        No genera un PBIX ni un PBIP.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project_name
+                - approved_stages
+                - openaiFileIdRefs
+                - specification
+              properties:
+                project_name:
+                  type: string
+                approved_stages:
+                  type: array
+                  items:
+                    type: integer
+                    minimum: 1
+                    maximum: 7
+                openaiFileIdRefs:
+                  type: array
+                  minItems: 1
+                  maxItems: 1
+                  items:
+                    type: string
+                  description: >
+                    Exactamente un Excel .xlsx cargado por el usuario.
+                    En ejecución ChatGPT enviará nombre, id, tipo MIME y enlace temporal.
+                specification:
+                  type: object
+                  required:
+                    - power_query
+                    - relationships
+                    - measures_dax
+                    - visual_spec
+                    - test_plan
+                  properties:
+                    power_query:
+                      type: object
+                      additionalProperties: true
+                    relationships:
+                      type: object
+                      additionalProperties: true
+                    measures_dax:
+                      type: string
+                    visual_spec:
+                      type: object
+                      additionalProperties: true
+                    test_plan:
+                      type: object
+                      additionalProperties: true
+      responses:
+        "200":
+          description: Paquete técnico generado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  source_modified:
+                    type: boolean
+                  native_validation:
+                    type: string
+                  artifact:
+                    type: object
+                    additionalProperties: true
+                  source_profile:
+                    type: object
+                    additionalProperties: true
+                  openaiFileResponse:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        mime_type:
+                          type: string
+                        content:
+                          type: string
+                          format: byte
+        "401":
+          description: Falta autenticación.
+        "403":
+          description: Clave inválida.
+        "409":
+          description: Faltan aprobaciones.
+        "422":
+          description: Solicitud o archivo inválidos.
+
+components:
+  schemas:
+    GenericObject:
+      type: object
+      additionalProperties: true
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer

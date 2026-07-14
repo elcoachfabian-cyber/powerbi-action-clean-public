@@ -1,0 +1,65 @@
+PILOTO LIMPIO — GPT ACTION PARA EXCEL A POWER BI
+================================================
+
+Este piloto usa UNA SOLA acción: buildPowerBIPackage.
+Recibe el Excel final y devuelve inmediatamente un ZIP mediante openaiFileResponse.
+No guarda proyectos entre llamadas y evita problemas de almacenamiento temporal.
+
+SOFTWARE
+--------
+1. GitHub Desktop
+2. Cuenta GitHub
+3. Cuenta Render
+4. ChatGPT con acceso a creación de GPTs
+5. Explorador de archivos de Windows
+6. PowerShell, solo para generar la clave
+
+ORDEN
+-----
+1. Descomprime esta carpeta.
+2. Usa GitHub Desktop para crear y publicar un repositorio privado.
+3. Conecta el repositorio en Render como Web Service.
+4. Configura ACTION_API_KEY.
+5. Comprueba /health.
+6. Cambia la URL del servidor en openapi-action.yaml.
+7. Pega el esquema en la Action del GPT.
+8. Configura autenticación API Key / Bearer.
+9. Política: https://TU-SERVICIO.onrender.com/privacy
+10. Prueba buildPowerBIPackage con un Excel.
+
+RENDER
+------
+Build Command:
+pip install -r requirements.txt
+
+Start Command:
+uvicorn main:app --host 0.0.0.0 --port $PORT
+
+Health Check Path:
+/health
+
+VARIABLES
+---------
+ACTION_API_KEY = clave larga aleatoria
+PYTHON_VERSION = 3.12.10
+MAX_UPLOAD_MB = 25
+
+GENERAR CLAVE EN POWERSHELL
+---------------------------
+$bytes=New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Fill($bytes); [Convert]::ToBase64String($bytes)
+
+No escribas Bearer dentro de la clave.
+
+RESULTADO
+---------
+ZIP descargable con:
+- manifest.json
+- source_profile.json
+- power_query.json
+- relationships.json
+- measures.dax
+- visual_spec.json
+- test_plan.json
+- validation_report.json
+
+No genera PBIX ni PBIP.
