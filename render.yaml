@@ -13,3 +13,8 @@ services:
         sync: false
       - key: MAX_UPLOAD_MB
         value: "25"
+
+      - key: PUBLIC_BASE_URL
+        value: https://powerbi-action-clean-public.onrender.com
+      - key: DOWNLOAD_TTL_SECONDS
+        value: "900"

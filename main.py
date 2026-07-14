@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-import base64
 import hashlib
 import hmac
 import io
 import json
 import os
 import re
+import secrets
+import threading
+import time
 import tempfile
 import zipfile
 from pathlib import Path
@@ -15,12 +17,45 @@ from urllib.parse import urlparse
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from openpyxl import load_workbook
 
 
 API_KEY = os.getenv("ACTION_API_KEY", "").strip()
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "25"))
+PUBLIC_BASE_URL = os.getenv(
+    "PUBLIC_BASE_URL",
+    "https://powerbi-action-clean-public.onrender.com",
+).rstrip("/")
+DOWNLOAD_TTL_SECONDS = int(os.getenv("DOWNLOAD_TTL_SECONDS", "900"))
+
+_DOWNLOADS: dict[str, dict[str, Any]] = {}
+_DOWNLOADS_LOCK = threading.Lock()
+
+
+def _prune_downloads() -> None:
+    now = time.time()
+    expired = [
+        token
+        for token, item in _DOWNLOADS.items()
+        if float(item["expires_at"]) <= now
+    ]
+    for token in expired:
+        _DOWNLOADS.pop(token, None)
+
+
+def store_download(name: str, content: bytes) -> str:
+    token = secrets.token_urlsafe(32)
+    with _DOWNLOADS_LOCK:
+        _prune_downloads()
+        _DOWNLOADS[token] = {
+            "name": name,
+            "content": content,
+            "expires_at": time.time() + DOWNLOAD_TTL_SECONDS,
+        }
+    return f"{PUBLIC_BASE_URL}/v1/downloads/{token}"
+
+
 ALLOWED_FILE_HOST_SUFFIXES = tuple(
     value.strip().lower()
     for value in os.getenv(
@@ -32,7 +67,7 @@ ALLOWED_FILE_HOST_SUFFIXES = tuple(
 
 app = FastAPI(
     title="Power BI Automation Pilot API",
-    version="1.0.0",
+    version="1.2.0",
     description=(
         "Recibe un Excel final, valida su estructura y devuelve un paquete técnico ZIP "
         "para Power BI sin modificar el archivo fuente."
@@ -281,6 +316,29 @@ def privacy() -> str:
     """
 
 
+@app.get("/v1/downloads/{token}", include_in_schema=False)
+def download_package(token: str) -> Response:
+    with _DOWNLOADS_LOCK:
+        _prune_downloads()
+        item = _DOWNLOADS.get(token)
+
+    if item is None:
+        raise HTTPException(
+            status_code=404,
+            detail="El archivo temporal no existe o ya venció.",
+        )
+
+    return Response(
+        content=bytes(item["content"]),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{item["name"]}"',
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
 @app.post(
     "/v1/build-package",
     operation_id="buildPowerBIPackage",
@@ -359,11 +417,6 @@ async def build_power_bi_package(request: Request) -> dict[str, Any]:
             "table_count": source_profile["table_count"],
             "formula_count": source_profile["formula_count"],
         },
-        "openaiFileResponse": [
-            {
-                "name": package_name,
-                "mime_type": "application/zip",
-                "content": base64.b64encode(package_bytes).decode("ascii"),
-            }
-        ],
+        "download_url": store_download(package_name, package_bytes),
+        "download_expires_seconds": DOWNLOAD_TTL_SECONDS,
     }

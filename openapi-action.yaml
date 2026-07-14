@@ -1,12 +1,12 @@
 openapi: 3.1.0
 info:
   title: Power BI Automation Pilot API
-  version: 1.0.0
+  version: 1.2.0
   description: >
     Genera un paquete técnico ZIP para Power BI a partir de un Excel final
     y una especificación aprobada, sin modificar el archivo fuente.
 servers:
-  - url: https://powerbi-action-clean-public.onrender.com
+  - url: https://REEMPLAZAR-POR-TU-SERVICIO.onrender.com
 
 paths:
   /v1/build-package:
@@ -91,18 +91,13 @@ paths:
                   source_profile:
                     type: object
                     additionalProperties: true
-                  openaiFileResponse:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        name:
-                          type: string
-                        mime_type:
-                          type: string
-                        content:
-                          type: string
-                          format: byte
+                  download_url:
+                    type: string
+                    format: uri
+                    description: Enlace HTTPS temporal para descargar el ZIP directamente en el navegador.
+                  download_expires_seconds:
+                    type: integer
+                    description: Segundos de vigencia aproximada del enlace.
         "401":
           description: Falta autenticación.
         "403":
