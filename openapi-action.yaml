@@ -6,7 +6,7 @@ info:
     Genera un paquete técnico ZIP para Power BI a partir de un Excel final
     y una especificación aprobada, sin modificar el archivo fuente.
 servers:
-  - url: https://REEMPLAZAR-POR-TU-SERVICIO.onrender.com
+  - url: https://powerbi-action-clean-public.onrender.com
 
 paths:
   /v1/build-package:
